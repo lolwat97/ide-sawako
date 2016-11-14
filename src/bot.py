@@ -17,7 +17,7 @@ class Bot(sleekxmpp.ClientXMPP):
 
         logging.basicConfig(level = logging.INFO,
                             format = '%(levelname)-8s %(message)s')
-        
+
         config = self.load_config(configFile)
 
         self.cleverbotInstance = cleverbot.Cleverbot()
@@ -35,7 +35,7 @@ class Bot(sleekxmpp.ClientXMPP):
         self.modifier = TextModifier(self.nick, namesFile, otherFile)
 
         self.add_event_handler("session_start", self.start)
-        self.add_event_handler("message", self.muc_message)
+        self.add_event_handler("message", self.message_handler)
 
     def load_config(self, configFile):
         configJson = open(configFile)
@@ -53,55 +53,92 @@ class Bot(sleekxmpp.ClientXMPP):
                                         wait=True)
         logging.info('joined ' + self.room)
 
-    def easy_message(self, msg):
+    def message_muc(self, msg):
         self.send_message(mto = self.room,
                           mbody = msg,
                           mtype = 'groupchat')
 
-    def muc_message(self, msg):
+    def message_handler(self, msg):
+        if msg['mucnick']:
+            logging.info('got muc message')
+            self.muc_message_handler(msg)
+        else:
+            logging.info('got private message')
+            self.pm_message_handler(msg)
+
+    def pm_message_handler(self, msg):
+        if msg['body'][0] == '$':
+            if msg['body'][1] == '+':
+                self.gelbooruHelper.incPage()
+                msg.reply(self.gelbooruHelper.getPostsString()).send()
+            elif msg['body'][1] == '-':
+                self.gelbooruHelper.decPage()
+                msg.reply(self.gelbooruHelper.getPostsString()).send()
+            elif msg['body'][1] == '0':
+                self.gelbooruHelper.zeroPage()
+                msg.reply(self.gelbooruHelper.getPostsString()).send()
+            else:
+                tags = msg['body'][1:]
+                self.gelbooruHelper.zeroPage()
+                self.gelbooruHelper.setTags(tags)
+                msg.reply(self.gelbooruHelper.getPostsString()).send()
+        elif msg['body'][0] == '#':
+            try:
+                to_reg = msg['body'][1:]
+                to_val = re.search('(\d+.?\d*[ +*/-^]*)+', to_reg).group(0)
+                if any(x in to_val for x in ['**', '<<', '>>', '^', '[', ']']):
+                    msg.reply('Ууу, сложно, дай чего попроще!').send()
+                    return 0
+                val = eval(to_val)
+                self.reply(self.talk.random_ithink(str(val))).send()
+            except: pass
+        else:
+            msg.reply(self.modifier.modify(self.cleverbotInstance.ask(msg['body']))).send()
+
+    def muc_message_handler(self, msg):
         if msg['mucnick'] != self.nick:
 
             if self.nick.lower() == msg['body'][:3].lower():
-                self.easy_message(msg['mucnick']+': ' + self.modifier.modify(self.cleverbotInstance.ask(msg['body'][4:])))
+                self.message_muc(msg['mucnick']+': ' + self.modifier.modify(self.cleverbotInstance.ask(msg['body'][4:])))
 
             if self.talk.check_chat_greeting(msg['body']):
-                self.easy_message(self.talk.random_greeting(msg['mucnick']))
+                self.message_muc(self.talk.random_greeting(msg['mucnick']))
 
             if self.talk.check_goodbye(msg['body']) or self.talk.check_sleep(msg['body']):
-                self.easy_message(self.talk.random_goodbye(msg['mucnick']))
+                self.message_muc(self.talk.random_goodbye(msg['mucnick']))
 
             if self.talk.check_swear(msg['body']) and self.nick in msg['body']:
-                self.easy_message(self.talk.random_swear())
+                self.message_muc(self.talk.random_swear())
 
             if msg['mucnick'] == 'ara~ara' and msg['body'][0] == '!':
                 if random.random() >= 0.2:
-                    self.easy_message('! ' + self.cleverbotInstance.ask(msg['body']))
+                    self.message_muc('! ' + self.cleverbotInstance.ask(msg['body']))
                 else:
-                    self.easy_message(self.talk.talk_with_ara_end())
+                    self.message_muc(self.talk.talk_with_ara_end())
 
             if msg['body'][0] == '$':
                 if msg['body'][1] == '+':
                     self.gelbooruHelper.incPage()
-                    self.easy_message(self.gelbooruHelper.getPostsString())
+                    self.message_muc(self.gelbooruHelper.getPostsString())
                 elif msg['body'][1] == '-':
                     self.gelbooruHelper.decPage()
-                    self.easy_message(self.gelbooruHelper.getPostsString())
+                    self.message_muc(self.gelbooruHelper.getPostsString())
                 elif msg['body'][1] == '0':
                     self.gelbooruHelper.zeroPage()
-                    self.easy_message(self.gelbooruHelper.getPostsString())
+                    self.message_muc(self.gelbooruHelper.getPostsString())
                 else:
                     tags = msg['body'][1:]
                     self.gelbooruHelper.zeroPage()
                     self.gelbooruHelper.setTags(tags)
-                    self.easy_message(self.gelbooruHelper.getPostsString())
+                    self.message_muc(self.gelbooruHelper.getPostsString())
 
             if msg['body'][0] == '#':
                 try:
                     to_reg = msg['body'][1:]
                     to_val = re.search('(\d+.?\d*[ +*/-^]*)+', to_reg).group(0)
                     if any(x in to_val for x in ['**', '<<', '>>', '^', '[', ']']):
-                        self.easy_message('Ууу, сложно. %s, дай чего попроще!' % msg['mucnick'])
+                        self.message_muc('Ууу, сложно. %s, дай чего попроще!' % msg['mucnick'])
                         return 0
                     val = eval(to_val)
-                    self.easy_message(self.talk.random_ithink(str(val)))
+                    self.message_muc(self.talk.random_ithink(str(val)))
                 except: pass
