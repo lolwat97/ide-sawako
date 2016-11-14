@@ -10,7 +10,7 @@ import logging
 from talking import Talking
 from cleverbot_text_modification import TextModifier
 from booru import GelbooruHelper
-
+import anon
 
 class Bot(sleekxmpp.ClientXMPP):
     def __init__(self, configFile, phrasesFile = 'json/phrases.json', namesFile = 'json/names.json', otherFile = 'json/other.json'):
@@ -30,6 +30,7 @@ class Bot(sleekxmpp.ClientXMPP):
 
         self.room = config['room']
         self.nick = config['nick']
+        self.lastUrl = None
 
         self.talk = Talking(phrasesFile)
         self.modifier = TextModifier(self.nick, namesFile, otherFile)
@@ -59,6 +60,10 @@ class Bot(sleekxmpp.ClientXMPP):
                           mtype = 'groupchat')
 
     def message_handler(self, msg):
+        urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', msg['body'])
+        if urls:
+            self.lastUrl = urls[-1]
+
         if msg['mucnick']:
             logging.info('got muc message')
             self.muc_message_handler(msg)
@@ -85,15 +90,11 @@ class Bot(sleekxmpp.ClientXMPP):
                 self.gelbooruHelper.setTags(tags)
                 msg.reply(self.gelbooruHelper.getPostsString()).send()
         elif msg['body'][0] == '#':
-            try:
-                to_reg = msg['body'][1:]
-                to_val = re.search('(\d+.?\d*[ +*/-^]*)+', to_reg).group(0)
-                if any(x in to_val for x in ['**', '<<', '>>', '^', '[', ']']):
-                    msg.reply('Ууу, сложно, дай чего попроще!').send()
-                    return 0
-                val = eval(to_val)
-                self.reply(self.talk.random_ithink(str(val))).send()
-            except: pass
+            if msg['body'][1:5] == 'anon':
+                if self.lastUrl:
+                    msg.reply('Анонимизировано, господин: ' + anon.getAnonUrl(self.lastUrl)).send()
+                else:
+                    msg.reply('Не вижу никакого урла, чтобы анонимизировать! ;_;').send()
         else:
             msg.reply(self.modifier.modify(self.cleverbotInstance.ask(msg['body']))).send()
 
@@ -136,13 +137,9 @@ class Bot(sleekxmpp.ClientXMPP):
                     self.gelbooruHelper.setTags(tags)
                     self.message_muc(self.gelbooruHelper.getPostsString())
 
-            if msg['body'][0] == '#':
-                try:
-                    to_reg = msg['body'][1:]
-                    to_val = re.search('(\d+.?\d*[ +*/-^]*)+', to_reg).group(0)
-                    if any(x in to_val for x in ['**', '<<', '>>', '^', '[', ']']):
-                        self.message_muc('Ууу, сложно. %s, дай чего попроще!' % msg['mucnick'])
-                        return 0
-                    val = eval(to_val)
-                    self.message_muc(self.talk.random_ithink(str(val)))
-                except: pass
+            elif msg['body'][0] == '#':
+                if msg['body'][1:5] == 'anon':
+                    if self.lastUrl:
+                        self.message_muc('Анонимизировано, господин: ' + anon.getAnonUrl(self.lastUrl))
+                    else:
+                        self.message_muc('Не вижу никакого урла, чтобы анонимизировать! ;_;')
