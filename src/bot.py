@@ -8,6 +8,7 @@ import random
 
 from talking import Talking
 from cleverbot_text_modification import TextModifier
+from booru import GelbooruHelper
 
 
 class Bot(sleekxmpp.ClientXMPP):
@@ -15,6 +16,7 @@ class Bot(sleekxmpp.ClientXMPP):
         config = self.load_config(configFile)
 
         self.cleverbotInstance = cleverbot.Cleverbot()
+        self.gelbooruHelper = GelbooruHelper()
 
         sleekxmpp.ClientXMPP.__init__(self, config['jid'], config['pass'])
         self.register_plugin('xep_0030') # Service Discovery
@@ -71,6 +73,22 @@ class Bot(sleekxmpp.ClientXMPP):
                     self.easy_message('! ' + self.cleverbotInstance.ask(msg['body']))
                 else:
                     self.easy_message(self.talk.talk_with_ara_end())
+
+            if msg['body'][0] == '$':
+                if msg['body'][1] == '+':
+                    self.gelbooruHelper.incPage()
+                    self.easy_message(self.gelbooruHelper.getPostsString())
+                elif msg['body'][1] == '-':
+                    self.gelbooruHelper.decPage()
+                    self.easy_message(self.gelbooruHelper.getPostsString())
+                elif msg['body'][1] == '0':
+                    self.gelbooruHelper.zeroPage()
+                    self.easy_message(self.gelbooruHelper.getPostsString())
+                else:
+                    tags = msg['body'][1:]
+                    self.gelbooruHelper.zeroPage()
+                    self.gelbooruHelper.setTags(tags)
+                    self.easy_message(self.gelbooruHelper.getPostsString())
 
             if msg['body'][0] == '#':
                 try:
