@@ -5,6 +5,7 @@ import json
 import time
 import re
 import random
+import logging
 
 from talking import Talking
 from cleverbot_text_modification import TextModifier
@@ -13,6 +14,10 @@ from booru import GelbooruHelper
 
 class Bot(sleekxmpp.ClientXMPP):
     def __init__(self, configFile, phrasesFile, namesFile, otherFile):
+
+        logging.basicConfig(level = logging.INFO,
+                            format = '%(levelname)-8s %(message)s')
+        
         config = self.load_config(configFile)
 
         self.cleverbotInstance = cleverbot.Cleverbot()
@@ -30,23 +35,23 @@ class Bot(sleekxmpp.ClientXMPP):
         self.modifier = TextModifier(self.nick, namesFile, otherFile)
 
         self.add_event_handler("session_start", self.start)
-        self.add_event_handler("groupchat_message", self.muc_message)
+        self.add_event_handler("message", self.muc_message)
 
     def load_config(self, configFile):
         configJson = open(configFile)
         config = json.load(configJson)
-        print('INFO     loaded config')
+        logging.info('loaded config')
         return config
 
     def start(self, event):
         self.get_roster()
-        print('INFO     got roster')
+        logging.info('got roster')
         self.send_presence()
-        print('INFO     presence sent')
+        logging.info('presence sent')
         self.plugin['xep_0045'].joinMUC(self.room,
                                         self.nick,
                                         wait=True)
-        print('INFO     joined ' + self.room)
+        logging.info('joined ' + self.room)
 
     def easy_message(self, msg):
         self.send_message(mto = self.room,
