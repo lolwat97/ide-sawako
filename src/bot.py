@@ -13,7 +13,7 @@ from booru import GelbooruHelper
 
 
 class Bot(sleekxmpp.ClientXMPP):
-    def __init__(self, configFile, phrasesFile, namesFile, otherFile):
+    def __init__(self, configFile, phrasesFile = 'json/phrases.json', namesFile = 'json/names.json', otherFile = 'json/other.json'):
 
         logging.basicConfig(level = logging.INFO,
                             format = '%(levelname)-8s %(message)s')
@@ -77,6 +77,8 @@ class Bot(sleekxmpp.ClientXMPP):
             elif msg['body'][1] == '0':
                 self.gelbooruHelper.zeroPage()
                 msg.reply(self.gelbooruHelper.getPostsString()).send()
+            elif msg['body'][1:5] == 'anon':
+                msg.reply(self.gelbooruHelper.getAnonymizedLinksString()).send()
             else:
                 tags = msg['body'][1:]
                 self.gelbooruHelper.zeroPage()
@@ -110,11 +112,11 @@ class Bot(sleekxmpp.ClientXMPP):
             if self.talk.check_swear(msg['body']) and self.nick in msg['body']:
                 self.message_muc(self.talk.random_swear())
 
-            if msg['mucnick'] == 'ara~ara' and msg['body'][0] == '!':
-                if random.random() >= 0.2:
+            if msg['mucnick'] == 'ara~ara':
+                if random.random() >= 0.3:
                     self.message_muc('! ' + self.cleverbotInstance.ask(msg['body']))
-                else:
-                    self.message_muc(self.talk.talk_with_ara_end())
+                #else:
+                #    self.message_muc(self.talk.talk_with_ara_end())
 
             if msg['body'][0] == '$':
                 if msg['body'][1] == '+':
@@ -126,6 +128,8 @@ class Bot(sleekxmpp.ClientXMPP):
                 elif msg['body'][1] == '0':
                     self.gelbooruHelper.zeroPage()
                     self.message_muc(self.gelbooruHelper.getPostsString())
+                elif msg['body'][1:5] == 'anon':
+                    self.message_muc(self.gelbooruHelper.getAnonymizedLinksString())
                 else:
                     tags = msg['body'][1:]
                     self.gelbooruHelper.zeroPage()
