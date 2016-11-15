@@ -172,6 +172,8 @@ class Bot(sleekxmpp.ClientXMPP):
                     self.message_muc(self.gelbooruHelper.generateString(msg['body'][9:]))
                 elif msg['body'][1:9] == 'danbooru':
                     self.message_muc(self.danbooruHelper.generateString(msg['body'][9:]))
+                elif msg['body'][1] == '#' or msg['body'][1:5] == 'help' or msg['body'][1:7] == 'помощь':
+                    self.message_muc('Господин, все доступные команды, которые я могу выполнять, можно посмотреть на https://github.com/lolwat97/ide-sawako/blob/master/README.md')
 
             if self.urlpostedFlag and self.printTitles:
                 self.message_muc(web.getPageTitle(self.lastUrl))
