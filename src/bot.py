@@ -9,27 +9,33 @@ import logging
 
 from talking import Talking
 from cleverbot_text_modification import TextModifier
-from booru import GelbooruHelper
+from booru import GelbooruHelper, DanbooruHelper
 import anon
 import web
 
-MAGIC_URL_REGEX = 'http[s]?://(?:[a-zA-Zа-яА-Я]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+MAGIC_URL_REGEX = 'http[s]?://(?:[a-zA-Zа-яА-Я]|[0-9]|[$-_@.&+]|[!*\(\),]|(?'+\
+    ':%[0-9a-fA-F][0-9a-fA-F]))+'
+
 
 class Bot(sleekxmpp.ClientXMPP):
-    def __init__(self, configFile, printTitles = True, phrasesFile = 'json/phrases.json', namesFile = 'json/names.json', otherFile = 'json/other.json'):
+    def __init__(self, configFile, printTitles=True,
+                 phrasesFile='json/phrases.json',
+                 namesFile='json/names.json',
+                 otherFile='json/other.json'):
 
-        logging.basicConfig(level = logging.INFO,
-                            format = '%(levelname)-8s %(message)s')
+        logging.basicConfig(level=logging.INFO,
+                            format='%(levelname)-8s %(message)s')
 
         config = self.load_config(configFile)
 
         self.cleverbotInstance = cleverbot.Cleverbot()
         self.gelbooruHelper = GelbooruHelper()
+        self.danbooruHelper = DanbooruHelper()
 
         sleekxmpp.ClientXMPP.__init__(self, config['jid'], config['pass'])
-        self.register_plugin('xep_0030') # Service Discovery
-        self.register_plugin('xep_0199') # Ping
-        self.register_plugin('xep_0045') # MUC
+        self.register_plugin('xep_0030')  # Service Discovery
+        self.register_plugin('xep_0199')  # Ping
+        self.register_plugin('xep_0045')  # MUC
 
         self.room = config['room']
         self.nick = config['nick']
@@ -59,9 +65,9 @@ class Bot(sleekxmpp.ClientXMPP):
         logging.info('joined ' + self.room)
 
     def message_muc(self, msg):
-        self.send_message(mto = self.room,
-                          mbody = msg,
-                          mtype = 'groupchat')
+        self.send_message(mto=self.room,
+                          mbody=msg,
+                          mtype='groupchat')
 
     def message_handler(self, msg):
         if msg['mucnick']:
@@ -89,7 +95,8 @@ class Bot(sleekxmpp.ClientXMPP):
                 self.gelbooruHelper.zeroPage()
                 msg.reply(self.gelbooruHelper.getPostsString()).send()
             elif msg['body'][1:5] == 'anon':
-                msg.reply(self.gelbooruHelper.getAnonymizedLinksString()).send()
+                msg.reply(self.gelbooruHelper.getAnonymizedLinksString())\
+                    .send()
             else:
                 tags = msg['body'][1:]
                 self.gelbooruHelper.zeroPage()
@@ -100,9 +107,12 @@ class Bot(sleekxmpp.ClientXMPP):
                 if self.lastUrl:
                     msg.reply(anon.getAnonUrl(self.lastUrl)).send()
                 else:
-                    msg.reply('Не вижу никакого урла, чтобы анонимизировать! ;_;').send()
+                    msg.reply\
+                        ('Не вижу никакого урла, чтобы анонимизировать! ;_;')\
+                        .send()
         else:
-            msg.reply(self.modifier.modify(self.cleverbotInstance.ask(msg['body']))).send()
+            msg.reply(self.modifier.modify(self.cleverbotInstance\
+                .ask(msg['body']))).send()
 
     def muc_message_handler(self, msg):
         self.urlpostedFlag = False
@@ -114,7 +124,10 @@ class Bot(sleekxmpp.ClientXMPP):
         if msg['mucnick'] != self.nick:
 
             if self.nick.lower() == msg['body'][:3].lower():
-                self.message_muc(msg['mucnick']+': ' + self.modifier.modify(self.cleverbotInstance.ask(msg['body'][4:])))
+                self.message_muc(msg['mucnick']+': ' +
+                                 self.modifier.modify(
+                                                self.cleverbotInstance\
+                                                    .ask(msg['body'][4:])))
 
             if self.talk.check_chat_greeting(msg['body']):
                 self.message_muc(self.talk.random_greeting(msg['mucnick']))
@@ -155,6 +168,10 @@ class Bot(sleekxmpp.ClientXMPP):
                         self.message_muc(anon.getAnonUrl(self.lastUrl))
                     else:
                         self.message_muc('Не вижу никакого урла, чтобы анонимизировать! ;_;')
+                elif msg['body'][1:9] == 'gelbooru':
+                    self.message_muc(self.gelbooruHelper.generateString(msg['body'][9:]))
+                elif msg['body'][1:9] == 'danbooru':
+                    self.message_muc(self.danbooruHelper.generateString(msg['body'][9:]))
 
             if self.urlpostedFlag and self.printTitles:
                 self.message_muc(web.getPageTitle(self.lastUrl))
