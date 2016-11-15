@@ -1,7 +1,7 @@
 from bot import Bot
 import logging
 
-floodchatBot = Bot('json/config_floodchat.json')
+floodchatBot = Bot('json/config_floodchat.json', printTitles = False)
 shinkaiBot = Bot('json/config_shinkai.json')
 umeBot = Bot('json/config_ume.json')
 lastBot = Bot('json/config_last.json')

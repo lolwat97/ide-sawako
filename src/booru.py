@@ -1,4 +1,5 @@
 import urllib.request
+import requests
 import json
 import logging
 import xml.etree.ElementTree as ET
@@ -15,9 +16,9 @@ class GelbooruHelper():
         self.limitUrl = '&limit=5'
 
     def getData(self):
-        url = self.baseUrl + self.tagUrl + self.tags + self.limitUrl + self.pageUrl + str(self.page)
+        url = self.baseUrl + self.limitUrl + self.pageUrl + str(self.page) + self.tagUrl + self.tags
         logging.info('serving ' + url)
-        data = urllib.request.urlopen(url).read().decode('utf-8')
+        data = requests.get(url).text
         tree = ET.fromstring(data)
         return tree
 
@@ -38,14 +39,18 @@ class GelbooruHelper():
         message = 'Вот анонимизированные ссылки, господин:\n'
         for post in self.posts:
             url = 'http://noblockme.ru/api/anonymize?url=' + post.attrib['file_url']
-            anonString = urllib.request.urlopen(url).read().decode('utf-8')
+            anonString = requests.get(url).text
             anonJson = json.loads(anonString)
-            anonUrl = anonJson['result']
-            message += (anonUrl + '\n')
+            if anonJson['status'] == 0:
+                anonUrl = anonJson['result']
+                message += (anonUrl + '\n')
+            else:
+                message = 'А-а-а, не вижу страницы! Извините, господин! ;_;'
         return message
 
     def setTags(self, tags):
         tags = tags.replace(' ', '+')
+        tags = tags.replace('&', '')
         logging.debug('setting tags ' + tags)
         self.tags = tags
 
